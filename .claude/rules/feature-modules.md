@@ -90,6 +90,8 @@ Screen tests live in `src/commonTest` and run on Android (Robolectric), desktop,
 
 - The test class extends `PlatformUiTest` (`presentation:testing`): on Android it runs the test with Robolectric; elsewhere it fixes the locale so screenshots do not depend on the machine.
 - `runComposeUiTest { … }` with the screen inside `KoinIsolatedContext` (a fresh `koinApplication` per test with the fake definitions) and `WithTestViewModelStore`, as `setMainScreen` does. **Never the `KoinApplication` composable or `startKoin`**: the global context survives between tests and the next test gets the previous test's ViewModel.
+- The test class replaces `Dispatchers.Main` with an `UnconfinedTestDispatcher` (`setMain` in `@BeforeTest`, `resetMain` in `@AfterTest`) and the ViewModel gets `ioDispatcher = Dispatchers.Main`: in the browser the real Main dispatcher only runs between event-loop turns, and `waitUntil` never yields one, so the screen would stay in its first state.
+- Compose UI tests do not run on the JS browser target (Skiko is not initialized under Karma): `convention.kmp.feature` disables `jsBrowserTest`. The web UI tests run on Wasm.
 - Find nodes by test tag (`MainScreenTestTags`) or non-localized text, not by a translated string: the locale differs between platforms.
 - Wait with `waitUntilExactlyOneExists(matcher, UI_TEST_TIMEOUT_MILLIS)`: resources load asynchronously and the default 1 s is not always enough.
 - Screenshots: `captureScreenshot(onRoot(), name = "…")`. Each platform keeps its own reference images in `src/commonTest/screenshots/<android|desktop|ios>/` (they render text differently); the web captures nothing. A plain test run does not capture; `recordRoborazzi*` records and `verifyRoborazzi*` compares.
