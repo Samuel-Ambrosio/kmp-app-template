@@ -13,7 +13,9 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
 
-// An isolated Koin context per test: the global one would keep the first test's definitions alive
+// An isolated Koin context per test: the global one would keep the first test's definitions alive.
+// The ViewModel runs on Dispatchers.Main, which each test replaces with an unconfined test dispatcher:
+// in the browser the real one only runs between event-loop turns, which waitUntil never yields.
 @OptIn(ExperimentalTestApi::class)
 internal fun ComposeUiTest.setMainScreen(todoRepository: TodoRepository, isDarkTheme: Boolean = false) {
     setContent {

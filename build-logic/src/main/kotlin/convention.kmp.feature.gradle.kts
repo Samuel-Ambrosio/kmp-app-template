@@ -7,6 +7,12 @@ plugins {
 }
 
 kotlin {
+    // Under Karma, Skiko is not initialized for the JS target ("org_jetbrains_skia_* is not defined"), so
+    // Compose UI tests cannot render there. The web UI tests run on Wasm, the primary web target.
+    js {
+        browser { testTask { enabled = false } }
+    }
+
     sourceSets {
         commonMain.dependencies {
             implementation(project(":domain:model"))

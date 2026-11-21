@@ -16,11 +16,28 @@ import com.samuelav.domain.model.utils.Result
 import com.samuelav.domain.repository.todo.TodoRepository
 import com.samuelav.presentation.testing.PlatformUiTest
 import com.samuelav.presentation.testing.UI_TEST_TIMEOUT_MILLIS
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 
-@OptIn(ExperimentalTestApi::class)
+@OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
 class MainScreenTest : PlatformUiTest() {
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
     @Test
     fun showsAProgressIndicatorWhileLoading() = runComposeUiTest {
         setMainScreen(

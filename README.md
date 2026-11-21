@@ -210,7 +210,7 @@ Tests are written once in `commonTest` and run on every target; platform-specifi
 # JVM, Android (Robolectric), iOS simulator and Node (JS/Wasm) tests
 ./gradlew jvmTest testAndroidHostTest iosSimulatorArm64Test jsNodeTest wasmJsNodeTest
 
-# Web UI tests run in headless Chrome (installed on CI)
+# Browser tests run in headless Chrome (installed on CI); Compose UI tests run on Wasm only
 ./gradlew jsBrowserTest wasmJsBrowserTest
 
 # Screenshot regression: compare against the reference images / re-record them after an intended UI change
