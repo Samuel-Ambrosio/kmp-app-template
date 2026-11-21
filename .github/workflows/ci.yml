@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detekt:
+    name: Detekt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Run detekt
+        run: ./gradlew detekt --continue
+
+      - name: Upload detekt reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: detekt-reports
+          path: '**/build/reports/detekt/*.html'
+          retention-days: 7
+
+  tests:
+    name: Tests (JVM, Android, web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          # Gradle downloads the platform it needs
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+
+      # Browser tests use the Chrome preinstalled on the runner (Karma, ChromeHeadless).
+      # A plain run does not compare screenshots, so desktop UI tests also run here.
+      - name: Run tests
+        run: ./gradlew jvmTest testAndroidHostTest jsNodeTest wasmJsNodeTest jsBrowserTest wasmJsBrowserTest --continue
+
+      # Robolectric renders the same on every OS; desktop screenshots are verified on macOS
+      - name: Verify Android screenshots
+        run: ./gradlew verifyRoborazziAndroidHostTest
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/outputs/roborazzi/
+          retention-days: 7
+
+  # Desktop screenshots are recorded on macOS: Skia renders glyphs differently on Linux,
+  # so they are verified here together with the iOS ones.
+  macos:
+    name: macOS (iOS, desktop screenshots)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Run iOS tests and verify iOS and desktop screenshots
+        run: ./gradlew iosSimulatorArm64Test verifyRoborazziIosSimulatorArm64 verifyRoborazziJvm --continue
+
+      - name: Build iosApp
+        run: >
+          xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/outputs/roborazzi/
+          retention-days: 7
+
+  build:
+    name: Build apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+
+      - name: Assemble Android debug APK, desktop and web
+        run: ./gradlew :androidApp:assembleDebug :desktopApp:compileKotlin :webApp:wasmJsBrowserDistribution :webApp:jsBrowserDistribution
